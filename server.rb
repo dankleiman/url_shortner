@@ -1,9 +1,7 @@
 require 'sinatra'
-require 'csv'
-require 'pry'
 require 'uri'
 require 'redis'
-require 'json'
+
 
 def get_connection
   if ENV.has_key?("REDISCLOUD_URL")
