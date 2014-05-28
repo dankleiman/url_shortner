@@ -88,3 +88,19 @@ img {
 .right_button {
     float: right;
 }
+
+.stats td {
+
+  font-size: .8em;
+  padding: 0px 20px;
+  text-align: left;
+
+}
+
+.stats th {
+
+  padding: 0px 20px;
+  text-align: left;
+
+}
+

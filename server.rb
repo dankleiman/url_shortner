@@ -1,6 +1,7 @@
 require 'sinatra'
 require 'uri'
 require 'redis'
+require 'pry'
 
 
 def get_connection
@@ -13,7 +14,7 @@ end
 
 def save_link(url, short_url)
   redis = get_connection
-  redis.hmset("short:url:#{short_url}", "url", url, "clicks", 0)
+  redis.hmset("short:url:#{short_url}", "short_url", "klei.mn/#{short_url}", "url", url, "clicks", 0)
   redis.sadd("links", "short:url:#{short_url}")
 end
 
@@ -49,19 +50,34 @@ get '/' do
 end
 
 get '/links/:short' do
-  @short = params[:short]
+  short = params[:short]
   redis = get_connection
-  @long_url = redis.hget("short:url:#{@short}", "url")
-  @clicks = redis.hget("short:url:#{@short}", "clicks")
+  @long_url = redis.hget("short:url:#{short}", "url")
+  @short_url = redis.hget("short:url:#{short}", "short_url")
+  @clicks = redis.hget("short:url:#{short}", "clicks")
   erb :'links/show'
 end
 
 get '/:short_url' do
   short_url = params[:short_url]
-  add_clicks(short_url)
-  redis = get_connection
-  outgoing_link = redis.hget("short:url:#{short_url}", "url")
-  redirect "#{outgoing_link}"
+  if short_url == 'stats'
+    redis = get_connection
+    links = redis.smembers("links")
+    url_stats = []
+    links.each do |link|
+      url_stats << redis.hvals(link)
+    end
+    @url_stats = url_stats
+    # binding.pry
+    erb :'stats'
+  elsif short_url == 'about'
+    erb :'about'
+  else
+    add_clicks(short_url)
+    redis = get_connection
+    outgoing_link = redis.hget("short:url:#{short_url}", "url")
+    redirect "#{outgoing_link}"
+  end
 end
 
 post '/new' do
@@ -70,7 +86,6 @@ post '/new' do
   @errors = valid_url(url)
   if @errors.empty?
     short = get_short(url)
-  # short_url = 'http://' + 'this_app_domain.com/'+ short
     save_link(url, short)
     redirect "/links/#{short}"
   else

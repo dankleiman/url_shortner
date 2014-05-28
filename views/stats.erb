@@ -1,0 +1,22 @@
+<h1 class="home">Shortened Links</h1>
+
+<table class="stats">
+  <thead>
+    <tr>
+      <th>Short URL</th>
+      <th>Original URL</th>
+      <th>Clicks</th>
+    </tr>
+  </thead>
+  <tbody>
+    <%@url_stats.each do |url|%>
+    <tr>
+        <td><%=url[0]%></td>
+        <td><%=url[1]%></td>
+        <td class="clicks"><%=url[2]%></td>
+    </tr>
+    <%end%>
+  </tbody>
+</table>
+
+
