@@ -1,0 +1,14 @@
+<div class="errors">
+<%if !@errors.empty?%>
+  <% @errors.each do |message| %>
+  <p><%=message%></p>
+  <%end%>
+<%end%>
+</div>
+<form action="/new" method="post">
+  <div>
+    <label for="url">URL: </label>
+    <input type="text" name="url" id="url" placeholder="Enter a valid URL." value="<%=params[:url]%>"/>
+    <input type="submit" value="Shorten"/>
+  </div>
+</form>
