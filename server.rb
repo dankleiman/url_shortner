@@ -1,7 +1,7 @@
 require 'sinatra'
 require 'uri'
 require 'redis'
-require 'pry'
+
 
 
 def get_connection
@@ -68,7 +68,6 @@ get '/:short_url' do
       url_stats << redis.hvals(link)
     end
     @url_stats = url_stats
-    # binding.pry
     erb :'stats'
   elsif short_url == 'about'
     erb :'about'
