@@ -29,14 +29,14 @@ end
 def save_link(url, short_url)
   db_connection do |conn|
     conn.exec("INSERT INTO urls (long_url, short_url, clicks)
-    VALUES ('#{url}', '#{short_url}', 0);")
+    VALUES ($1, $2, 0);", [url, short_url])
   end
 end
 
 def add_clicks(link)
   db_connection do |conn|
   #increment clicks cell
-    conn.exec("UPDATE urls SET clicks = clicks + 1 WHERE urls.short_url = '#{link}'")
+    conn.exec("UPDATE urls SET clicks = clicks + 1 WHERE urls.short_url = $1", [link])
   end
 end
 
@@ -48,13 +48,13 @@ end
 
 def get_url_data(short_url)
   db_connection do |conn|
-    conn.exec("SELECT * FROM urls WHERE urls.short_url = '#{short_url}'")
+    conn.exec("SELECT * FROM urls WHERE urls.short_url = $1", [short_url])
   end
 end
 
 def check_short_url(short_url)
   db_connection do |conn|
-    results = conn.exec("SELECT short_url FROM urls WHERE urls.short_url = '#{short_url}'")
+    results = conn.exec("SELECT short_url FROM urls WHERE urls.short_url = $1", [short_url])
   end
 end
 
@@ -73,13 +73,13 @@ end
 
 def get_long_url(short_url)
   db_connection do |conn|
-    conn.exec("SELECT long_url FROM urls WHERE urls.short_url = '#{short_url}'")
+    conn.exec("SELECT long_url FROM urls WHERE urls.short_url = $1", [short_url])
   end
 end
 
 def check_long_url(url)
   db_connection do |conn|
-    conn.exec("SELECT * FROM urls WHERE urls.long_url = '#{url}'")
+    conn.exec("SELECT * FROM urls WHERE urls.long_url = $1", [url])
   end
 end
 
