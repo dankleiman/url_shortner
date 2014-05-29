@@ -77,6 +77,12 @@ def get_long_url(short_url)
   end
 end
 
+def check_long_url(url)
+  db_connection do |conn|
+    conn.exec("SELECT * FROM urls WHERE urls.long_url = '#{url}'")
+  end
+end
+
 def valid_url(url)
   errors = []
   if (url =~ URI::regexp) != 0
@@ -116,8 +122,13 @@ post '/new' do
   @errors = []
   @errors = valid_url(url)
   if @errors.empty?
-    short_url = get_short(url)
-    save_link(url, short_url)
+    long_url = check_long_url(url).to_a
+    if long_url.empty?
+      short_url = get_short(url)
+      save_link(url, short_url)
+    else
+      short_url = long_url[0]["short_url"]
+    end
     redirect "/links/#{short_url}"
   else
     erb :index
