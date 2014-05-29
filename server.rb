@@ -1,7 +1,7 @@
 require 'sinatra'
 require 'uri'
 require 'pg'
-require 'pry'
+
 def db_connection
   begin
     connection = PG::Connection.open(dbname: 'urls')
