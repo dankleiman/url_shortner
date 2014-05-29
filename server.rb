@@ -19,10 +19,8 @@ end
 
 def db_connection
   begin
-    connection = PG::Connection.open(setting.db_connection_info)
-
+    connection = PG::Connection.open(settings.db_connection_info)
     yield(connection)
-
   ensure
     connection.close
   end
