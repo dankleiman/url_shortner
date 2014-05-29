@@ -1,6 +1,12 @@
 <div class="single_link">
-  <h1><%=@short_url%></h1>
+  <h1>klei.mn/<%=@url_data[0]["short_url"]%></h1>
   Links to:
-  <p><a href="<%=@long_url%>"><%=@long_url%></a></p>
-  <%=@clicks%> clicks
+  <p><a href="<%=@url_data[0]["long_url"]%>"><%=@url_data[0]["long_url"]%></a></p>
+  <%=@url_data[0]["clicks"]%> clicks
 </div>
+
+
+<!-- [{"id"=>"5",
+  "long_url"=>"http://naphtali-visser.4ormat.com/night",
+  "short_url"=>"EUbapD",
+  "clicks"=>"0"}] -->

@@ -11,9 +11,9 @@
   <tbody>
     <%@url_stats.each do |url|%>
     <tr>
-        <td><%=url[0]%></td>
-        <td><%=url[1]%></td>
-        <td class="clicks"><%=url[2]%></td>
+        <td>klei.mn/<%=url["short_url"]%></td>
+        <td><%=url["long_url"]%></td>
+        <td><p class="clicks"><%=url["clicks"]%></p></td>
     </tr>
     <%end%>
   </tbody>

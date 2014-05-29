@@ -1,26 +1,58 @@
 require 'sinatra'
 require 'uri'
-require 'redis'
+require 'pg'
 
+def db_connection
+  begin
+    connection = PG::Connection.open(dbname: 'urls')
 
+    yield(connection)
 
-def get_connection
-  if ENV.has_key?("REDISCLOUD_URL")
-    Redis.new(url: ENV["REDISCLOUD_URL"])
-  else
-    Redis.new
+  ensure
+    connection.close
   end
 end
 
 def save_link(url, short_url)
-  redis = get_connection
-  redis.hmset("short:url:#{short_url}", "short_url", "klei.mn/#{short_url}", "url", url, "clicks", 0)
-  redis.sadd("links", "short:url:#{short_url}")
+  db_connection do |conn|
+    conn.exec("INSERT INTO urls (long_url, short_url, clicks)
+    VALUES ('#{url}', '#{short_url}', 0);")
+  end
 end
 
 def add_clicks(link)
-  redis = get_connection
-  redis.hincrby("short:url:#{link}", "clicks", 1)
+  db_connection do |conn|
+  #increment clicks cell
+    conn.exec("UPDATE urls SET clicks = clicks + 1 WHERE urls.short_url = '#{link}'")
+  end
+end
+
+def get_all_url_stats
+  db_connection do |conn|
+    conn.exec("SELECT * FROM urls")
+  end
+end
+
+def get_url_data(short_url)
+  db_connection do |conn|
+    conn.exec("SELECT * FROM urls WHERE urls.short_url = '#{short_url}'")
+  end
+end
+
+def get_short(long_url)
+  letters = (('a'..'z').to_a + ('A'..'Z').to_a)
+  short_url = letters.sample(6).join
+  #check if it exists already, return current version
+  # db_connection do |conn|
+  #   conn.exec(sql)
+  # end
+  short_url
+end
+
+def get_long_url(short_url)
+  db_connection do |conn|
+    conn.exec("SELECT long_url FROM urls WHERE urls.short_url = '#{short_url}'")
+  end
 end
 
 def valid_url(url)
@@ -31,19 +63,6 @@ def valid_url(url)
   errors
 end
 
-def get_short(long_url)
-  letters = (('a'..'z').to_a + ('A'..'Z').to_a)
-  short_url = letters.sample(6).join
-  redis = get_connection
-  until !redis.sismember("links", "short:url:#{short_url}")
-    short_url = letters.sample(6).join
-  end
-  short_url
-end
-
-#stats page to show all links, long and short, plus clicks
-#on post submit long link to shorten, clicks += 1 before redirect
-
 get '/' do
   @errors = []
   erb :index
@@ -51,30 +70,21 @@ end
 
 get '/links/:short' do
   short = params[:short]
-  redis = get_connection
-  @long_url = redis.hget("short:url:#{short}", "url")
-  @short_url = redis.hget("short:url:#{short}", "short_url")
-  @clicks = redis.hget("short:url:#{short}", "clicks")
+  @url_data = get_url_data(short).to_a
   erb :'links/show'
 end
 
 get '/:short_url' do
   short_url = params[:short_url]
   if short_url == 'stats'
-    redis = get_connection
-    links = redis.smembers("links")
-    url_stats = []
-    links.each do |link|
-      url_stats << redis.hvals(link)
-    end
-    @url_stats = url_stats
+    @url_stats = get_all_url_stats.to_a
     erb :'stats'
   elsif short_url == 'about'
     erb :'about'
   else
     add_clicks(short_url)
-    redis = get_connection
-    outgoing_link = redis.hget("short:url:#{short_url}", "url")
+    outgoing_link_data = get_long_url(short_url).to_a
+    outgoing_link = outgoing_link_data[0]["long_url"]
     redirect "#{outgoing_link}"
   end
 end
@@ -84,9 +94,9 @@ post '/new' do
   @errors = []
   @errors = valid_url(url)
   if @errors.empty?
-    short = get_short(url)
-    save_link(url, short)
-    redirect "/links/#{short}"
+    short_url = get_short(url)
+    save_link(url, short_url)
+    redirect "/links/#{short_url}"
   else
     erb :index
   end
