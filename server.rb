@@ -5,9 +5,9 @@ require 'pg'
 
 configure :production do
   set :db_connection_info, {
-    host: ENV['DB_HOST']
-    dbname:ENV['DB_DATABASE']
-    user:ENV['DB_USER']
+    host: ENV['DB_HOST'],
+    dbname:ENV['DB_DATABASE'],
+    user:ENV['DB_USER'],
     password:ENV['DB_PASSWORD']
   }
 
