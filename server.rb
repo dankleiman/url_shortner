@@ -1,7 +1,7 @@
 require 'sinatra'
 require 'uri'
 require 'pg'
-
+require 'pry'
 def db_connection
   begin
     connection = PG::Connection.open(dbname: 'urls')
@@ -39,13 +39,22 @@ def get_url_data(short_url)
   end
 end
 
+def check_short_url(short_url)
+  db_connection do |conn|
+    results = conn.exec("SELECT short_url FROM urls WHERE urls.short_url = '#{short_url}'")
+  end
+end
+
 def get_short(long_url)
+  unique_url = false
   letters = (('a'..'z').to_a + ('A'..'Z').to_a)
-  short_url = letters.sample(6).join
-  #check if it exists already, return current version
-  # db_connection do |conn|
-  #   conn.exec(sql)
-  # end
+  until unique_url == true
+    short_url = letters.sample(6).join
+    short_urls = check_short_url(short_url).to_a
+    if short_urls.empty?
+      unique_url = true
+    end
+  end
   short_url
 end
 
@@ -70,20 +79,20 @@ end
 
 get '/links/:short' do
   short = params[:short]
-  @url_data = get_url_data(short).to_a
+  @url_data = get_url_data(short)
   erb :'links/show'
 end
 
 get '/:short_url' do
   short_url = params[:short_url]
   if short_url == 'stats'
-    @url_stats = get_all_url_stats.to_a
+    @url_stats = get_all_url_stats
     erb :'stats'
   elsif short_url == 'about'
     erb :'about'
   else
     add_clicks(short_url)
-    outgoing_link_data = get_long_url(short_url).to_a
+    outgoing_link_data = get_long_url(short_url)
     outgoing_link = outgoing_link_data[0]["long_url"]
     redirect "#{outgoing_link}"
   end
