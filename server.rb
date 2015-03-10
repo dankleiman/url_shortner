@@ -1,135 +1,57 @@
 require 'sinatra'
-require 'uri'
-require 'pg'
-
+require './lib/link.rb'
 
 configure :production do
-  set :db_connection_info, {
+  Link.establish_connection({
     host: ENV['DB_HOST'],
-    dbname:ENV['DB_DATABASE'],
-    user:ENV['DB_USER'],
-    password:ENV['DB_PASSWORD']
-  }
-
+    dbname: ENV['DB_DATABASE'],
+    user: ENV['DB_USER'],
+    password: ENV['DB_PASSWORD']
+  })
 end
 
 configure :development do
-  set :db_connection_info, {dbname: 'urls'}
-end
-
-def db_connection
-  begin
-    connection = PG::Connection.open(settings.db_connection_info)
-    yield(connection)
-  ensure
-    connection.close
-  end
-end
-
-def save_link(url, short_url)
-  db_connection do |conn|
-    conn.exec("INSERT INTO urls (long_url, short_url, clicks)
-    VALUES ($1, $2, 0);", [url, short_url])
-  end
-end
-
-def add_clicks(link)
-  db_connection do |conn|
-  #increment clicks cell
-    conn.exec("UPDATE urls SET clicks = clicks + 1 WHERE urls.short_url = $1", [link])
-  end
-end
-
-def get_all_url_stats
-  db_connection do |conn|
-    conn.exec("SELECT * FROM urls")
-  end
-end
-
-def get_url_data(short_url)
-  db_connection do |conn|
-    conn.exec("SELECT * FROM urls WHERE urls.short_url = $1", [short_url])
-  end
-end
-
-def check_short_url(short_url)
-  db_connection do |conn|
-    results = conn.exec("SELECT short_url FROM urls WHERE urls.short_url = $1", [short_url])
-  end
-end
-
-def get_short(long_url)
-  unique_url = false
-  letters = (('a'..'z').to_a + ('A'..'Z').to_a)
-  until unique_url == true
-    short_url = letters.sample(6).join
-    short_urls = check_short_url(short_url).to_a
-    if short_urls.empty?
-      unique_url = true
-    end
-  end
-  short_url
-end
-
-def get_long_url(short_url)
-  db_connection do |conn|
-    conn.exec("SELECT long_url FROM urls WHERE urls.short_url = $1", [short_url])
-  end
-end
-
-def check_long_url(url)
-  db_connection do |conn|
-    conn.exec("SELECT * FROM urls WHERE urls.long_url = $1", [url])
-  end
-end
-
-def valid_url(url)
-  errors = []
-  if (url =~ URI::regexp) != 0
-      errors << "Please enter a valid url."
-  end
-  errors
+  Link.establish_connection({
+    dbname: ENV['DB_DATABASE']
+  })
 end
 
 get '/' do
-  @errors = []
   erb :index
 end
 
-get '/links/:short' do
-  short = params[:short]
-  @url_data = get_url_data(short)
-  erb :'links/show'
+get '/links/:short_url' do
+  @link = Link.where(short_url: params[:short_url]).first
+  erb :show
+end
+
+get '/stats' do
+  @links = Link.all
+  erb :stats
+end
+
+get '/about' do
+  erb :about
 end
 
 get '/:short_url' do
-  short_url = params[:short_url]
-  if short_url == 'stats'
-    @url_stats = get_all_url_stats
-    erb :'stats'
-  elsif short_url == 'about'
-    erb :'about'
+  pass if %w[stats about].include?(params[:short_url])
+  
+  if link = Link.where(short_url: params[:short_url]).first
+    link.update_attributes(clicks: link.clicks + 1)
+    redirect link.long_url
   else
-    add_clicks(short_url)
-    outgoing_link_data = get_long_url(short_url)
-    outgoing_link = outgoing_link_data[0]["long_url"]
-    redirect "#{outgoing_link}"
+    @error = 'Invalid url.'
+    erb :index
   end
 end
 
 post '/new' do
-  url = params[:url]
-  @errors = []
-  @errors = valid_url(url)
-  if @errors.empty?
-    long_url = check_long_url(url).to_a
-    if long_url.empty?
-      short_url = get_short(url)
-      save_link(url, short_url)
-    else
-      short_url = long_url[0]["short_url"]
-    end
-    redirect "/links/#{short_url}"
+  @error = (Link.valid_url?(params[:url]) ? nil : 'Please enter a valid url.')
+  if @error.nil?
+    link = Link.where(long_url: params[:url]).first
+    link ||= Link.create(long_url: params[:url], short_url: Link.generate_short, clicks: 0)
+    redirect "/links/#{link.short_url}"
   else
     erb :index
   end
